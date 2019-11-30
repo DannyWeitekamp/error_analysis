@@ -550,6 +550,7 @@ def one_student_all_problems(df, directory, stu,rename_map={}):
     return(new)
 
 def print_load_bar(i,L):
+    ''' Prints out a pretty load bar '''
     ticks = int(50*i/float(L))
     bar = "[" + "*" * ticks + " " * (50-ticks) + "]"
     sys.stdout.write("\r" + ("%i/%i" %(i,L)) + bar)
