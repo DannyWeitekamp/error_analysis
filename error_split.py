@@ -606,7 +606,7 @@ if __name__ == "__main__":
         help='A JSON file with dictionary {"selection" : <mapping>, "action" : <mapping>, "input" : <mapping>} \
             where each <mapping> is a dictionary that maps value in the brd to their corresponding value in \
             the transaction file. Useful if brds and transactions use different naming conventions.')
-    parser.add_argument("--require", default=None, dest='requirements',nargs='+',
+    parser.add_argument("--require", default=[], dest='requirements',nargs='+',
         help="A set of requirements <column_name1>=<value1> ... <column_nameN>=<valueN> which must be satisfied for a row to be included")
     parser.add_argument('-v','--verbosity' , default=1, dest = "verbosity",
         help='0 or 1')
@@ -625,7 +625,7 @@ if __name__ == "__main__":
             rename_map = json.load(json_file)
     
 
-    requirements = [re.split("=+",x)[:2] for x in args.requirements] if args.requirements is not None else []
+    requirements = [re.split("=+",x)[:2] for x in args.requirements] 
     
     generate_split_errors(transactions=args.transactions,
                           brd_path=args.brds,
