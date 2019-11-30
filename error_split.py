@@ -625,7 +625,7 @@ if __name__ == "__main__":
             rename_map = json.load(json_file)
     
 
-    requirements = [re.split("=+",x)[:2] for x in args.requirements]
+    requirements = [re.split("=+",x)[:2] for x in args.requirements] if args.requirements is not None else []
     
     generate_split_errors(transactions=args.transactions,
                           brd_path=args.brds,
