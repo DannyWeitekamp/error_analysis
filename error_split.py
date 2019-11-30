@@ -25,19 +25,21 @@ ERROR_TYPES = {
 }
 
 
-''' Read in a transaction csv file '''
+
 def transaction_file_to_df(path):
+    ''' Read in a transaction csv file '''
     df = pandas.read_csv(path, sep='\t', lineterminator='\n', skip_blank_lines=True).replace({r'\r': ''}, regex=True)
     df = df.rename(index=int, columns={a:a.rstrip() for a in df.keys()})
     return df
 
 
-'''
-extract_from_brd: returns a dataframe with information of all edges (correct steps) in brd file
-Input: directory path to brd files
-Output: a dataframe with columns of SAI, ID, source and destination of correct edges in brd
-'''
+
 def extract_from_brd(path):
+    '''
+    extract_from_brd: returns a dataframe with information of all edges (correct steps) in brd file
+    Input: directory path to brd files
+    Output: a dataframe with columns of SAI, ID, source and destination of correct edges in brd
+    '''
 
     parsedXML = et.parse(path)
     dfcols = ["match_s","match_a","match_i","match_actor","match_ID","match_source","match_dest"]
@@ -63,62 +65,12 @@ def extract_from_brd(path):
     
 
 
-
-'''
-update_input, update_action, update_selection: clean the SAI of edges in brds so they match the SAI of students in log
-Input: one row in the brd dataframe before cleaning
-Output: one row in the brd dataframe with cleaned SAI
-'''
-
-# clean the edge's input in humans brds
-def update_input(row): 
-    if(row['match_i'] == 'x'):
-     #   return("I need to convert these fractions before solving.: true")
-        return('x')
-    
-    if(row['match_i'] == 'v'):
-        return("I need to convert these fractions before solving.: false")
-    
-    else:        
-        return(str(row['match_i']))
-    
-    
-# clean the edge's action in humans brd        
-def update_action(row): 
-    if(row['match_a'] == 'UpdateTextArea'):
-        return('UpdateTextArea') 
-    
-    if(row['match_a'] == 'ButtonPressed'): 
-           return('ButtonPressed')
-        
-        
-# clean the edge's selection in humans brd         
-def update_selection(row): 
-    if(row['match_s'] == 'done'): 
-        return('done') 
-    elif(row['match_s'][10] == '8'): 
-        return('check_convert') 
-    else: 
-        if(row['match_s'][10] == '4'): 
-            box = '3' 
-        if(row['match_s'][10] == '5'): 
-            box = '4' 
-        if(row['match_s'][10] == '6'): 
-            box = '5' 
-        if(row['match_s'][13] == '0'): 
-            pos = 'num' 
-        if(row['match_s'][13] == '1'): 
-            pos = 'den' 
-        return(pos+box)
-           
-
-
-''' 
-clean_extract: clean variable names in CTAT interface so they match the ones used by human students
-Input: original brd dataframe from extract_from_brd
-Output: cleaned brd dataframe 
-'''
 def clean_extract(extract,rename_map={}):
+    ''' 
+    clean_extract: clean variable names in CTAT interface so they match the trasaction file
+    Input: original brd dataframe from extract_from_brd
+    Output: cleaned brd dataframe 
+    '''
     new = extract.copy()
     s_m = rename_map.get('selection',{})
     a_m = rename_map.get('action',{})
@@ -133,39 +85,42 @@ def clean_extract(extract,rename_map={}):
 
 
 
-'''
-get_correct_transaction: return only student-performed SAIs that are correct
-Input: original transactions of all problems from one student
-Output: correct transactions of all problems from one student
-'''
+
 def get_correct_transaction(transaction):
+    '''
+    get_correct_transaction: return only student-performed SAIs that are correct
+    Input: original transactions of all problems from one student
+    Output: correct transactions of all problems from one student
+    '''
     return (transaction[(transaction.Outcome == 'CORRECT') 
                 & (transaction.Action != 'setVisible')
                 & (transaction.Input != '+')])
 
 
 
-''' 
-check_transactions: filter out invalid transactions. If transactions end incorrectly, return False 
-Input: 
-    -df: student slice, a dataframe of a series of transactions that end with correct steps
-    -graph: graph generated from the brd dataframe
-Output: true if valid
-'''
+
 
 def check_transactions(df, graph):
-    # transactions that end incorrectly
+    ''' 
+    check_transactions: filter out invalid transactions. If transactions end incorrectly, return False 
+    Input: 
+        -df: student slice, a dataframe of a series of transactions that end with correct steps
+        -graph: graph generated from the brd dataframe
+    Output: true if valid
+    '''
     
+    # transactions that end incorrectly
     if( (df['Outcome'].iloc[-1] == 'INCORRECT') | (df['Outcome'].iloc[-1] == 'HINT')): return(False)
     return(True)
     
     
-'''
-clean_transaction: remove correct steps in transactions that are not in the brds
-Input: original student slice 
-Outpud: student slice without correct steps that are not in brds 
-'''
+
 def clean_transaction(df):
+    '''
+    clean_transaction: remove correct steps in transactions that are not in the brds
+    Input: original student slice 
+    Outpud: student slice without correct steps that are not in brds 
+    '''
     r = -1
     for _, table_row in df.iterrows():
         
@@ -176,12 +131,13 @@ def clean_transaction(df):
             
     return(df)
 
-'''
-get_graph_from_extract: return a graph created from brd dataframe
-Input: brd dataframe 
-Output: graph as a pair of mappings. Keys are edges in brd, values are its downstream neighbouring edges. 
-'''
+
 def get_graph_from_extract(extract):
+    '''
+    get_graph_from_extract: return a graph created from brd dataframe
+    Input: brd dataframe 
+    Output: graph as a pair of mappings. Keys are edges in brd, values are its downstream neighbouring edges. 
+    '''
     graph = {}
     tl = set()
     for _,table_row in extract.iterrows():
@@ -212,14 +168,15 @@ def get_first_correct_IDs(row, extract):
 
 
 
-'''
-get_node_SAIs: return a dictionary of SAI for each unique node 
-Input: 
-    -graph: graph generated from the brd file using get_graph
-    -cleaned_extract: cleaned brd dataframe from clean_extract
-Output: a dictionary of SAI for each node in graph 
-'''
+
 def get_node_SAIs(graph, cleaned_extract):
+    '''
+    get_node_SAIs: return a dictionary of SAI for each unique node 
+    Input: 
+        -graph: graph generated from the brd file using get_graph
+        -cleaned_extract: cleaned brd dataframe from clean_extract
+    Output: a dictionary of SAI for each node in graph 
+    '''
     correct_sai = {}
     for (ID, s, d) in graph:
         for _,table_row in cleaned_extract.iterrows():
@@ -229,8 +186,9 @@ def get_node_SAIs(graph, cleaned_extract):
 
 
 
-''' Find all starting nodes in a graph ''' 
+
 def find_beginnings(graph):
+    ''' Find all starting nodes in a graph ''' 
     s = set()
     for i in graph:
         start = True
@@ -243,18 +201,17 @@ def find_beginnings(graph):
    
     
     
-'''
-find_current_index: for student's incorrect steps, identify the next correct edge in brd that the student 
-is working toward      
-Input: 
-    -correct: list of indices for correct steps for a student slice
-    -incorrect: list of indices for incorrect steps for a student slice
-Output: a dictionary with keys being incorrect indices and values being the indices for next correct step 
-for that incorrect index.
-
-'''    
-    
 def find_current_index(correct, incorrect):
+    '''
+    find_current_index: for student's incorrect steps, identify the next correct edge in brd that the student 
+    is working toward      
+    Input: 
+        -correct: list of indices for correct steps for a student slice
+        -incorrect: list of indices for incorrect steps for a student slice
+    Output: a dictionary with keys being incorrect indices and values being the indices for next correct step 
+    for that incorrect index.
+    '''    
+
     res = {}
     correct_copy = copy.deepcopy(correct)
     
@@ -278,17 +235,18 @@ def find_current_index(correct, incorrect):
 
 
 
-'''
-find_last_index: for student's incorrect steps, identify the immediate last edge in brd 
-that the student has done correct 
-Input: 
-    -correct: list of indices for correct steps for a student slice
-    -incorrect: list of indices for incorrect steps for a student slice
-Output: a dictionary with keys being incorrect indices and values being the indices for last step in brd 
-that the student has done correct 
 
-'''
 def find_last_index(correct, incorrect):
+    '''
+    find_last_index: for student's incorrect steps, identify the immediate last edge in brd 
+    that the student has done correct 
+    Input: 
+        -correct: list of indices for correct steps for a student slice
+        -incorrect: list of indices for incorrect steps for a student slice
+    Output: a dictionary with keys being incorrect indices and values being the indices for last step in brd 
+    that the student has done correct 
+
+    '''
     incorrect_copy = copy.deepcopy(incorrect)
     while (incorrect_copy and (incorrect_copy[0] < correct[0])):
         incorrect_copy.pop(0)
@@ -306,15 +264,16 @@ def find_last_index(correct, incorrect):
 
 
 
-'''
-search: return all downstream edges from a certain starting edge in brd graph using bfs
-Input:
-    -graph: graph generated from the brd dataframe
-    -start: an edge to start searching downstream with
-Output: a list of edges that is downstream from the start edge in the order of bfs 
 
-'''
 def search(graph, start):
+    '''
+    search: return all downstream edges from a certain starting edge in brd graph using bfs
+    Input:
+        -graph: graph generated from the brd dataframe
+        -start: an edge to start searching downstream with
+    Output: a list of edges that is downstream from the start edge in the order of bfs 
+
+    '''
     if start not in graph: return None
     visited, queue = [], [start]
     while queue:
@@ -326,33 +285,35 @@ def search(graph, start):
 
 
 
-'''
-check_downstream: return true if an edge is in downstream 
-Input:
-    -graph: graph generated from the brd dataframe
-    -up: the node to compare downstream with 
-    -down: the node to check 
-Output: return true if down is in downstream of up 
-'''
+
 def check_downstream(graph, up, down):
+    '''
+    check_downstream: return true if an edge is in downstream 
+    Input:
+        -graph: graph generated from the brd dataframe
+        -up: the node to compare downstream with 
+        -down: the node to check 
+    Output: return true if down is in downstream of up 
+    '''
     if down in search(graph, up): return True
     return False 
 
 
 
-'''
-first_match: for student's correct step, return first edge in brd graph that matches it
-Input:
-    -df: a dataframe of a single row of one correct step made by student
-    -lst: a list returned from search that contains all the downstream edges below a certain edge; 
-    candidates to match with a certain correct student step 
-    -d: dictionary returned from get_node_SAIs
-    -last_node: the edge in brd that corresponds to last matched correct step made by student 
-    -gaph: graph generated from the brd dataframe
-Output: return first edge in brd graph that matches a correct step by student. If could not find one, return None
 
-'''
 def first_match(df, lst, d, last_node, graph):
+    '''
+    first_match: for student's correct step, return first edge in brd graph that matches it
+    Input:
+        -df: a dataframe of a single row of one correct step made by student
+        -lst: a list returned from search that contains all the downstream edges below a certain edge; 
+        candidates to match with a certain correct student step 
+        -d: dictionary returned from get_node_SAIs
+        -last_node: the edge in brd that corresponds to last matched correct step made by student 
+        -gaph: graph generated from the brd dataframe
+    Output: return first edge in brd graph that matches a correct step by student. If could not find one, return None
+
+    '''
     s_c, a_c, i_c = df['Selection'], df['Action'], df['Input']
     
     for node in lst:
@@ -363,18 +324,19 @@ def first_match(df, lst, d, last_node, graph):
                 return node          
     return None       
 
-'''
-match_steps: match one students' SAI with cleaned brd file, update the new four columns
-with binary values in dataframe 
-Input: 
-    -one_student: all step slices of a student including all problems in correct time order
-    -cleaned_extract: cleaned brd from clean_extract
-    -graph: graph generated from the brd dataframe
-Output: a copy of student slice dataframe with new columns of binary values 
 
-'''
 
 def match_steps(one_student, cleaned_extract, graph):
+    '''
+    match_steps: match one students' SAI with cleaned brd file, update the new four columns
+    with binary values in dataframe 
+    Input: 
+        -one_student: all step slices of a student including all problems in correct time order
+        -cleaned_extract: cleaned brd from clean_extract
+        -graph: graph generated from the brd dataframe
+    Output: a copy of student slice dataframe with new columns of binary values 
+
+    '''
     match = one_student.copy()
     match['SAI'], match['node'], match['downstream'], match['d_nodes'] = None, None, None, None
     match['S_current'], match['I_current'], match['S_downstream'], match['I_downstream'] = None, None, None, None
@@ -560,12 +522,13 @@ def match_steps(one_student, cleaned_extract, graph):
 
 
 
-'''
-original_df: For cases that end in incorrect or hint, return the original df with new blank columns 
-Input: all step slices for one student 
-Output: all step slices for one student with new blank columns
-'''
+
 def original_df(one_student):
+    '''
+    original_df: For cases that end in incorrect or hint, return the original df with new blank columns 
+    Input: all step slices for one student 
+    Output: all step slices for one student with new blank columns
+    '''
 
     match = one_student.copy()
     match['SAI'], match['node'], match['downstream'], match['d_nodes'] = None, None, None, None
@@ -576,15 +539,15 @@ def original_df(one_student):
     return match
     
 
-'''
-one_student_all_problems: match all problems from brd files for one student 
-Input:
-    -df: a dataframe of all problems for one student
-    -directory: a directory path in which to find all brd files
-Output: a new dataframe with new columns of binary values for this student 
 
-'''
 def one_student_all_problems(df, directory, stu,rename_map={}):
+    '''
+    one_student_all_problems: match all problems from brd files for one student 
+    Input:
+        -df: a dataframe of all problems for one student
+        -directory: a directory path in which to find all brd files
+    Output: a new dataframe with new columns of binary values for this student 
+    '''
     
     new = pandas.DataFrame(columns = list(df.columns))
     new['SAI'], new['node'], new['downstream'], new['d_nodes'] = None, None, None, None
@@ -624,18 +587,19 @@ def print_load_bar(i,L):
     sys.stdout.flush()
     
     
-'''
-generate_split_errors: take in paths to iso transactions and brd files to generate 
-new dataframe with four new columns with binary values
-Input:
-    -transactions: a path for the iso transaction log
-    -brd_path: a directory path in which to find the brd files whose names match the problem 
-    names in iso transaction log
-    -save_path: a path to save the new file generated
-Output: a new dataframe of student transaction log with new columns of binary values 
-    
-'''
+
 def generate_split_errors(transactions, brd_path, save_path, rename_map={},verbosity=1, requirements=[]):
+    '''
+    generate_split_errors: take in paths to iso transactions and brd files to generate 
+    new dataframe with four new columns with binary values
+    Input:
+        -transactions: a path for the iso transaction log
+        -brd_path: a directory path in which to find the brd files whose names match the problem 
+        names in iso transaction log
+        -save_path: a path to save the new file generated
+    Output: a new dataframe of student transaction log with new columns of binary values 
+        
+    '''
     t = transaction_file_to_df(transactions)
     for column,value in requirements:
         t =  (t[t[column] == value]).reset_index(drop=True)
