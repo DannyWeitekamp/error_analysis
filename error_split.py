@@ -579,6 +579,9 @@ def generate_split_errors(transactions, brd_path, save_path, rename_map={},verbo
     df['S_current'], df['I_current'], df['S_downstream'], df['I_downstream'] = None, None, None, None
     
     df['KC_toward'], df['error_type'] = None, None
+
+    if os.path.isfile(save_path):
+        os.remove(save_path)
     
     students = t['Anon Student Id'].unique()
     for i,stu in enumerate(students):
@@ -589,7 +592,7 @@ def generate_split_errors(transactions, brd_path, save_path, rename_map={},verbo
         new = one_student_all_problems(p, brd_path, stu, rename_map=rename_map)
         df = df.append(new)
         with open(save_path, 'a') as f:
-             new.to_csv(f, header=False,sep='\t')
+             new.to_csv(f, header=(i==0),sep='\t')
 
     return df
 
@@ -633,6 +636,8 @@ if __name__ == "__main__":
                           rename_map=rename_map,
                           verbosity=args.verbosity,
                           requirements=requirements)
+
+    print("ALL DONE!")
 
 
     
