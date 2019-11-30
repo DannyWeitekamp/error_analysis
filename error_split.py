@@ -302,7 +302,6 @@ def first_match(df, lst, d, last_node, graph):
     for node in lst:
         if check_downstream(graph, last_node, node):
             (s_l, a_l, i_l) = d[node] 
-            # print(node,(s_c, a_c, i_c),(s_l, a_l, i_l))
             if (s_c, a_c, i_c) ==  (s_l, a_l, i_l):
                 return node          
     return None       
