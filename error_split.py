@@ -72,12 +72,15 @@ def clean_extract(extract,rename_map={}):
     Output: cleaned brd dataframe 
     '''
     new = extract.copy()
-    s_m = rename_map.get('selection',{})
-    a_m = rename_map.get('action',{})
-    i_m = rename_map.get('input',{}) 
-    new.insert(0, 'match_s_new', new["match_s"].apply(lambda x : s_m[x] if x in s_m else x))
-    new.insert(0, 'match_a_new', new["match_a"].apply(lambda x : a_m[x] if x in a_m else x))
-    new.insert(0, 'match_i_new', new["match_i"].apply(lambda x : i_m[x] if x in i_m else x))
+    s_m = rename_map.get('selection',None)
+    a_m = rename_map.get('action',None)
+    i_m = rename_map.get('input',None)
+    new_s = new["match_s"].apply(lambda x : s_m[x] if x in s_m else x) if s_m is not None else new["match_s"]
+    new_a = new["match_a"].apply(lambda x : a_m[x] if x in a_m else x) if a_m is not None else new["match_a"]
+    new_i = new["match_i"].apply(lambda x : i_m[x] if x in i_m else x) if i_m is not None else new["match_i"]
+    new.insert(0, 'match_s_new', new_s)
+    new.insert(0, 'match_a_new', new_a)
+    new.insert(0, 'match_i_new', new_i)
     # new['match_s_new'] = new.apply(update_selection, axis=1)
     # new['match_a_new'] = new.apply(update_action, axis=1)
     # new['match_i_new'] = new.apply(update_input, axis=1)
