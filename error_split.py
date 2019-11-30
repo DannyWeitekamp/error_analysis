@@ -4,8 +4,6 @@ import copy
 from pprint import pprint
 import numpy as np
 import re
-# import matplotlib.pyplot as plt
-# from matplotlib import colors as mcolors
 import xml.etree.cElementTree as et 
 import argparse
 import json
@@ -81,9 +79,6 @@ def clean_extract(extract,rename_map={}):
     new.insert(0, 'match_s_new', new_s)
     new.insert(0, 'match_a_new', new_a)
     new.insert(0, 'match_i_new', new_i)
-    # new['match_s_new'] = new.apply(update_selection, axis=1)
-    # new['match_a_new'] = new.apply(update_action, axis=1)
-    # new['match_i_new'] = new.apply(update_input, axis=1)
     return(new)
 
 
@@ -156,21 +151,6 @@ def get_graph_from_extract(extract):
             if (j[1] == d):
                 graph[i].append(j)
     return(graph)
-
-
-def get_first_correct_IDs(row, extract):
-    lst = [] 
-    S, A, I = row['Selection'], row['Action'], row['Input']
-    
-    for _,table_row in extract.iterrows():
-        
-        if(S == table_row['match_s_new'] and A == table_row['match_a_new'] and I == table_row['match_i_new']):
-            ID, source, dest = table_row['match_ID'], table_row['match_source'], table_row['match_dest']
-            lst.append((ID, source, dest))
-    return(lst)
-
-
-
 
 def get_node_SAIs(graph, cleaned_extract):
     '''
@@ -379,7 +359,6 @@ def match_steps(one_student, cleaned_extract, graph):
             
             s, a, i = next_correct['Selection'], next_correct['Action'], next_correct['Input']
             
-            # print(s,a,i)
             if (s,a,i) in done:
             #deal with duplications
             
@@ -446,6 +425,7 @@ def match_steps(one_student, cleaned_extract, graph):
             
                 match.at[i ,'SAI'] = 'incorrect'
                 
+                #TODO: Figure out / recall what this was for.
                 #KC = match.at[cur_index[i], 'KC (Field)'] #KC of the node working towards 
                 #match.at[i, 'KC_toward'] = KC
 
@@ -456,7 +436,6 @@ def match_steps(one_student, cleaned_extract, graph):
                 
                 
                 if(i in last_index.keys()):
-                    # print("last_index",last_index,i,last_index[i])
                     n_l = match.at[last_index[i], 'node'] 
                     match.at[i, 'node'] = graph[n_l]
                 
@@ -468,10 +447,7 @@ def match_steps(one_student, cleaned_extract, graph):
                 
                 match_s_c = None 
                 for c in match.at[i, 'node']:
-                    # print(c)
                     (s_c, a_c, i_c) = sai_dict[c]
-                    # print(sai_dict)
-                    # print(sai_dict[c])
                     if s_c == sel: 
                         s_found_c = 1
                         match_s_c = c
@@ -496,10 +472,6 @@ def match_steps(one_student, cleaned_extract, graph):
 
                 match.at[i, 'downstream'] = list(downstream)
                 
-                
-                
-
-
                 d_nodes = set()
                 for n in match.at[i, 'downstream']:
                     d_nodes = d_nodes.union(search(graph, n))
@@ -519,7 +491,6 @@ def match_steps(one_student, cleaned_extract, graph):
 
                 e_type = str(s_found_c) + str(i_found_c) + str(s_found_d) + str(i_found_d) 
                 match.at[i, 'error_type'] = ERROR_TYPES[e_type]
-                # print("INCORRECT END", i, s_found_c, i_found_c, s_found_d, i_found_d)
             
         return match
 
@@ -567,17 +538,12 @@ def one_student_all_problems(df, directory, stu,rename_map={}):
         if (problem != "InstructionSlide"):
             brd = extract_from_brd(directory + "/" + problem + ".brd")
             graph = get_graph_from_extract(brd)
-            # print(graph)
 
             if check_transactions(stu_slice, graph):
-                # print("GOOOOOOOOOOOOOOOOOOOOOOOOOOOD")
                 tutor_SAI = clean_extract(brd,rename_map)
-                # print("tutor_SAI",tutor_SAI[['match_s','match_s_new']])
                 stu_match = match_steps(stu_slice, tutor_SAI, graph)
-                #raise ValueError()
                 new = new.append(stu_match)
             else:
-                # print("BAAAAAAAAAAAAAAAAAAAAAAAAAAAD")
                 orig_match = original_df(stu_slice)
                 new = new.append(orig_match)
 
@@ -647,7 +613,6 @@ if __name__ == "__main__":
 
     try:
         args = parser.parse_args(sys.argv[1:])
-        # args.setattr(args, "training", args.training[0]) # dunno why it comes in a list
         
     except Exception as e:
         print(e)
@@ -661,8 +626,6 @@ if __name__ == "__main__":
     
 
     requirements = [re.split("=+",x)[:2] for x in args.requirements]
-    # print(requirements,args.requirements)
-
     
     generate_split_errors(transactions=args.transactions,
                           brd_path=args.brds,
