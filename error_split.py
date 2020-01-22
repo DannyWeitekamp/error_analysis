@@ -9,9 +9,11 @@ import argparse
 import json
 
 
-# All possible error types made by the students:
+# All possible error types that can be made by students:
 ERROR_TYPES = {
-    "1100": "correct", "1101": "correct",
+    "11"  : "correct",
+    "hh"  : "hint",
+    "1100": "not correct", "1101": "not correct",
     "1000": "incorrect", 
     "1001": "misapplied",
     "0000": "out of graph", "0001": "out of graph", "0100": "out of graph", "0101": "out of graph", 
@@ -284,7 +286,7 @@ def check_downstream(graph, up, down):
 
 
 
-def first_match(df, lst, d, last_node, graph):
+def first_match(df, lst, d, last_node, graph, exceptions=[]):
     '''
     first_match: for student's correct step, return first edge in brd graph that matches it
     Input:
@@ -308,7 +310,7 @@ def first_match(df, lst, d, last_node, graph):
 
 
 
-def match_steps(one_student, cleaned_extract, graph):
+def match_steps(one_student, cleaned_extract, graph,exceptions=[]):
     '''
     match_steps: match one students' SAI with cleaned brd file, update the new four columns
     with binary values in dataframe 
@@ -371,17 +373,22 @@ def match_steps(one_student, cleaned_extract, graph):
                 transaction_sel_set.add(s)
                 SAI_d[(s,a,i)]= next_index
                 
-                f_match = first_match(next_correct, correct_order, sai_dict, last_node, graph)
+                f_match = first_match(next_correct, correct_order, sai_dict, last_node, graph,exceptions=exceptions)
 
-            
-                if f_match == None:
-                    can_match = False
-                    break
-            
                 
-                while correct_order[0] != f_match:
+                if f_match == None:
+                    if((s,a,i) in exceptions):
+                        f_match = last_node
+                    else:    
+                        can_match = False
+                        break
+                else:
+                    while correct_order[0] != f_match:
+                        correct_order.pop(0)
                     correct_order.pop(0)
-                correct_order.pop(0)
+                
+                # if(not is_excp):
+                    
                     
                 correct_transaction[next_index] = f_match
                 last_node = f_match
@@ -395,9 +402,9 @@ def match_steps(one_student, cleaned_extract, graph):
         b = set([x[0] for x in sai_dict.values()])
         if(not a.issubset(b)):
             print("Cannot match step slice with selections %s to brd with selections %s" % (a,b))
-            print("Consider using the --rename option")
-        else:
-            print("Can not match for this step_slice", match)
+            print("Consider using the --rename or --exceptions options")
+        
+        print("%s : Cannot match for this step_slice" % match["Problem Name"].iloc[0], match[['Problem Name','Selection','Action','Input']])
         return match
     
     
@@ -490,6 +497,13 @@ def match_steps(one_student, cleaned_extract, graph):
 
                 e_type = str(s_found_c) + str(i_found_c) + str(s_found_d) + str(i_found_d) 
                 match.at[i, 'error_type'] = ERROR_TYPES[e_type]
+
+        hints = list((match[match['Outcome'] == 'HINT']).index)
+
+        for i in hints:
+            match.at[i,'SAI'] = 'hint'
+            match.at[i, 'S_current'], match.at[i, 'I_current'] = "h", "h"
+            match.at[i, 'error_type'] = "hint"
             
         return match
 
@@ -513,7 +527,7 @@ def original_df(one_student):
     
 
 
-def one_student_all_problems(df, directory, stu,rename_map={}):
+def one_student_all_problems(df, directory, stu,rename_map={},exceptions=[]):
     '''
     one_student_all_problems: match all problems from brd files for one student 
     Input:
@@ -540,7 +554,7 @@ def one_student_all_problems(df, directory, stu,rename_map={}):
 
             if check_transactions(stu_slice, graph):
                 tutor_SAI = clean_extract(brd,rename_map)
-                stu_match = match_steps(stu_slice, tutor_SAI, graph)
+                stu_match = match_steps(stu_slice, tutor_SAI, graph,exceptions=exceptions)
                 new = new.append(stu_match)
             else:
                 orig_match = original_df(stu_slice)
@@ -557,7 +571,7 @@ def print_load_bar(i,L):
     
     
 
-def generate_split_errors(transactions, brd_path, save_path, rename_map={},verbosity=1, requirements=[]):
+def generate_split_errors(transactions, brd_path, save_path, rename_map={},verbosity=1, requirements=[],exceptions=[]):
     '''
     generate_split_errors: take in paths to iso transactions and brd files to generate 
     new dataframe with four new columns with binary values
@@ -589,7 +603,7 @@ def generate_split_errors(transactions, brd_path, save_path, rename_map={},verbo
             
         p = t[t['Anon Student Id'] == stu]
     
-        new = one_student_all_problems(p, brd_path, stu, rename_map=rename_map)
+        new = one_student_all_problems(p, brd_path, stu, rename_map=rename_map,exceptions=exceptions)
         df = df.append(new)
         with open(save_path, 'a') as f:
              new.to_csv(f, header=(i==0),sep='\t')
@@ -610,9 +624,14 @@ if __name__ == "__main__":
             where each <mapping> is a dictionary that maps value in the brd to their corresponding value in \
             the transaction file. Useful if brds and transactions use different naming conventions.')
     parser.add_argument("--require", default=[], dest='requirements',nargs='+',
-        help="A set of requirements <column_name1>=<value1> ... <column_nameN>=<valueN> which must be satisfied for a row to be included")
+        help="A set of requirements <column_name1>=<value1> ... <column_nameN>=<valueN> which must be satisfied for a row\
+         to be included in processing. Use if some extraneous transactions have not been cleaned from your data.")
+    parser.add_argument("-e","--exceptions", default=[], dest='exceptions',nargs='+',
+        help="A set of SAIs that will be passed over during checking. This option should only be used to ignore matching CORRECT \
+                SAIs which were added to the transaction file in post processing. Usage Example: -e \
+                '(check_convert,UpdateTextArea,x)' '(check_convert,UpdateTextArea,v).'")
     parser.add_argument('-v','--verbosity' , default=1, dest = "verbosity",
-        help='0 or 1')
+        help='0 for no prints or 1 for a load bar')
 
     try:
         args = parser.parse_args(sys.argv[1:])
@@ -629,13 +648,21 @@ if __name__ == "__main__":
     
 
     requirements = [re.split("=+",x)[:2] for x in args.requirements] 
+
+    exceptions = []
+    for ex in args.exceptions:
+        lst = re.search("\(([^\)]+)\)",ex)
+        lst = re.split(",",lst[0][1:-1])
+        exceptions.append(tuple(lst))
+        
     
     generate_split_errors(transactions=args.transactions,
                           brd_path=args.brds,
                           save_path=args.output,
                           rename_map=rename_map,
                           verbosity=args.verbosity,
-                          requirements=requirements)
+                          requirements=requirements,
+                          exceptions=exceptions)
 
     print("ALL DONE!")
 
